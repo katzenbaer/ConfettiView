@@ -29,15 +29,33 @@ public enum Confetti {
         // A custom shape.
         case custom(CGPath)
     }
+    
+    public struct Details {
+        public init(spin: Bool, birthRate: Float = 50, lifetime: Float = 10, scale: CGFloat = 1, scaleRange: CGFloat = 0.25, color: UIColor? = UIColor.random) {
+            self.spin = spin
+            self.birthRate = birthRate
+            self.lifetime = lifetime
+            self.scale = scale
+            self.scaleRange = scaleRange
+            self.color = color
+        }
+        
+        public var spin: Bool
+        public var birthRate: Float = 50
+        public var lifetime: Float = 10
+        public var scale: CGFloat = 1
+        public var scaleRange: CGFloat = 0.25
+        public var color: UIColor? = UIColor.random
+    }
 
     /// A shape with a color.
-    case shape(Shape, UIColor=UIColor.random)
+    case shape(Shape, Details)
 
     /// An image with a tint color.
-    case image(UIImage, UIColor=UIColor.random)
+    case image(UIImage, Details)
 
     /// A string of characters.
-    case text(String)
+    case text(String, Details)
 }
 
 
@@ -69,18 +87,18 @@ fileprivate final class Layer: CAEmitterLayer {
         emitterCells = contents.map { content in
             let cell = CAEmitterCell()
 
-            cell.birthRate = 50.0
-            cell.lifetime = 10.0
+            cell.birthRate = content.details.birthRate
+            cell.lifetime = content.details.lifetime
             cell.velocity = CGFloat(cell.birthRate * cell.lifetime)
             cell.velocityRange = cell.velocity / 2
             cell.emissionLongitude = .pi
             cell.emissionRange = .pi / 4
-            cell.spinRange = .pi * 8
-            cell.scaleRange = 0.25
-            cell.scale = 1.0 - cell.scaleRange
+            cell.spinRange = content.details.spin ? .pi * 8 : 0
+            cell.scaleRange = content.details.scaleRange
+            cell.scale = (1.0 - cell.scaleRange) * content.details.scale
             cell.contents = content.image.cgImage
 
-            if let color = content.color {
+            if let color = content.details.color {
                 cell.color = color.cgColor
             }
 
@@ -122,13 +140,12 @@ fileprivate extension Confetti.Shape {
 }
 
 fileprivate extension Confetti {
-    var color: UIColor? {
+    var details: Confetti.Details {
         switch self {
-        case let .image(_, color),
-             let .shape(_, color):
-            return color
-        default:
-            return nil
+        case let .image(_, details),
+             let .shape(_, details),
+             let .text(_, details):
+            return details
         }
     }
 
@@ -138,7 +155,7 @@ fileprivate extension Confetti {
             return shape.image(with: .white)
         case let .image(image, _):
             return image
-        case let .text(string):
+        case let .text(string, _):
             let defaultAttributes: [NSAttributedString.Key: Any] = [
                 .font: UIFont.systemFont(ofSize: 16.0)
             ]
